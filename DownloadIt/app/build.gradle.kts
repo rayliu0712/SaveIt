@@ -4,6 +4,10 @@ plugins {
   alias(libs.plugins.kotlin.compose)
 }
 
+kotlin {
+  jvmToolchain(21)
+}
+
 android {
   namespace = "com.rayliu0712.saveit"
   compileSdk = 36
@@ -20,18 +24,12 @@ android {
 
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
       )
     }
-  }
-  compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
-  }
-  kotlinOptions {
-    jvmTarget = "11"
   }
   buildFeatures {
     compose = true
@@ -48,6 +46,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
   implementation(libs.androidx.compose.material.icons.extended)
+  implementation(libs.androidx.lifecycle.service)
   testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)

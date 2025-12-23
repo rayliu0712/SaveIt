@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@null"
@@ -8,12 +12,25 @@
         android:icon="@mipmap/ic_launcher"
         android:label="Save It"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.DownloadIt">
+        android:supportsRtl="true">
+
         <activity
-            android:name="com.rayliu0712.saveit.MainActivity"
+            android:name=".main.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.DownloadIt">
+            android:theme="@style/MainActivity">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- activity that use to launch service -->
+        <activity
+            android:name=".service.ServiceActivity"
+            android:exported="true"
+            android:theme="@style/ServiceActivity">
 
             <!-- open as ... -->
             <intent-filter>
@@ -28,10 +45,17 @@
             <!-- share single file to ... -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
-    </application>
 
+        <service
+            android:name=".service.FileCopyService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+    </application>
 </manifest>

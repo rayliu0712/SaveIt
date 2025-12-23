@@ -1,6 +1,7 @@
-package com.rayliu0712.saveit
+package com.rayliu0712.saveit.main
 
-import android.os.Build
+import android.os.Build.VERSION.SDK_INT
+import android.os.Build.VERSION_CODES.S
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -18,7 +19,7 @@ fun MyTheme(
   val isDark = isSystemInDarkTheme()
 
   val colorScheme = when {
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+    SDK_INT >= S -> {
       val context = LocalContext.current
 
       if (isDark)
