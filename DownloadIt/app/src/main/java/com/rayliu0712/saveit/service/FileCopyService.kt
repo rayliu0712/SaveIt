@@ -14,9 +14,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicInteger
 
+/// Service is singleton
 class FileCopyService : LifecycleService() {
-  private lateinit var manager: NotificationManager
+  private lateinit var notificationMan: NotificationManager
+
+  private val counter = AtomicInteger(0)
 
   companion object {
     private const val PROGRESS_CHANNEL_ID = "PROGRESS_CHANNEL"
@@ -26,7 +30,8 @@ class FileCopyService : LifecycleService() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     super.onStartCommand(intent, flags, startId)
 
-    manager = getSystemService(NotificationManager::class.java)
+    counter.incrementAndGet()
+    notificationMan = getSystemService(NotificationManager::class.java)
     createChannels()
 
     val notifyId = System.currentTimeMillis().hashCode()
@@ -66,14 +71,17 @@ class FileCopyService : LifecycleService() {
             .setProgress(100, (value * 100 / fileSize).toInt(), false)
             .build()
 
-          manager.notify(notifyId, notification)
+          notificationMan.notify(notifyId, notification)
         }
 
-      notifyCompletion(manager, filename)
+      notificationMan.cancel(notifyId)
+      notifyCompletion(filename)
 
       // stop foreground & service
-      stopForeground(STOP_FOREGROUND_REMOVE)
-      stopSelf()
+      if (counter.decrementAndGet() == 0) {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+      }
     }
 
     // return START_REDELIVER_INTENT
@@ -81,7 +89,7 @@ class FileCopyService : LifecycleService() {
   }
 
   private fun createChannels() {
-    manager.createNotificationChannels(
+    notificationMan.createNotificationChannels(
       listOf(
         NotificationChannel(
           PROGRESS_CHANNEL_ID,
@@ -97,10 +105,7 @@ class FileCopyService : LifecycleService() {
     )
   }
 
-  private fun notifyCompletion(
-    manager: NotificationManager,
-    filename: String
-  ) {
+  private fun notifyCompletion(filename: String) {
     val notifyId = System.currentTimeMillis().hashCode()
 
     val notification = Notification.Builder(this, COMPLETION_CHANNEL_ID)
@@ -114,6 +119,6 @@ class FileCopyService : LifecycleService() {
       }
       .build()
 
-    manager.notify(notifyId, notification)
+    notificationMan.notify(notifyId, notification)
   }
 }

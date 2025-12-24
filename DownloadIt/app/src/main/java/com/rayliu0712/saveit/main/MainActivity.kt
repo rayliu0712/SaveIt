@@ -1,10 +1,12 @@
 package com.rayliu0712.saveit.main
 
 import android.Manifest.permission.POST_NOTIFICATIONS
+import android.app.Activity
 import android.app.DownloadManager
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager.PERMISSION_GRANTED
-import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.TIRAMISU
 import android.os.Bundle
@@ -49,8 +51,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
-import com.rayliu0712.saveit.service.getActivity
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -150,6 +152,7 @@ fun MainContent() {
 
           false -> Button(onClick = {
             launcher.launch(POST_NOTIFICATIONS)
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
           }) {
             Text("開啟通知")
           }
@@ -180,4 +183,18 @@ fun MainContent() {
       }
     }
   }
+}
+
+
+fun Context.getActivity(): Activity {
+  var context = this
+
+  while (context is ContextWrapper) {
+    if (context is Activity) {
+      return context
+    }
+    context = context.baseContext
+  }
+
+  error("Cannot get activity from context")
 }

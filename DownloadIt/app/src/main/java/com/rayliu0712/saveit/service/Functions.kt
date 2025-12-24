@@ -1,9 +1,7 @@
 package com.rayliu0712.saveit.service
 
-import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
-import android.content.ContextWrapper
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
@@ -103,17 +101,4 @@ fun Long.toFileSizeFormat(): String {
     "%.1f GiB".format(this / oneGiB)
   else // size >= 1TiB
     "%.1f TiB".format(this / oneTiB)
-}
-
-fun Context.getActivity(): Activity {
-  var context = this
-
-  while (context is ContextWrapper) {
-    if (context is Activity) {
-      return context
-    }
-    context = context.baseContext
-  }
-
-  error("Cannot get activity from context")
 }
