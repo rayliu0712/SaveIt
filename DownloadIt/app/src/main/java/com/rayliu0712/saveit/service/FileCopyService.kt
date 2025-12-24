@@ -111,7 +111,7 @@ class FileCopyService : LifecycleService() {
     val notification = Notification.Builder(this, COMPLETION_CHANNEL_ID)
       .apply {
         setSmallIcon(R.drawable.done)
-        setContentTitle("\"$filename\" completed")
+        setContentTitle("\"$filename\" 完成")
 
         if (SDK_INT >= S) {
           setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)

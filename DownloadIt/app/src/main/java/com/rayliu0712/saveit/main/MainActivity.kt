@@ -1,17 +1,15 @@
 package com.rayliu0712.saveit.main
 
 import android.Manifest.permission.POST_NOTIFICATIONS
-import android.app.Activity
 import android.app.DownloadManager
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
-import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.TIRAMISU
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,7 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Coffee
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -70,34 +68,36 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainContent() {
   val context = LocalContext.current
-  val activity = context.getActivity()
+  val activity = LocalActivity.current!!
 
   var expanded by remember { mutableStateOf(false) }
   var notificationState by remember {
-    mutableStateOf<Boolean?>(
-      if (SDK_INT >= TIRAMISU)
-        context.checkSelfPermission(POST_NOTIFICATIONS) == PERMISSION_GRANTED
-      else
-        true
-    )
+    mutableStateOf(context.checkNotificationPermission())
   }
 
-  val launcher = rememberLauncherForActivityResult(
+  val notificationPermissionRequester = rememberLauncherForActivityResult(
     ActivityResultContracts.RequestPermission()
-  ) {
+  ) { isGranted ->
     notificationState =
-      if (it)
+      if (isGranted)
         true
+      else if (
+        activity.shouldShowRequestPermissionRationale(POST_NOTIFICATIONS)
+      )
+        false
       else
-        if (activity.shouldShowRequestPermissionRationale(POST_NOTIFICATIONS))
-          false
-        else
-          null
+        null
+  }
+
+  val intentLauncher = rememberLauncherForActivityResult(
+    ActivityResultContracts.StartActivityForResult()
+  ) { result ->
+    notificationState = context.checkNotificationPermission()
   }
 
   LaunchedEffect(Unit) {
     if (SDK_INT >= TIRAMISU) {
-      launcher.launch(POST_NOTIFICATIONS)
+      notificationPermissionRequester.launch(POST_NOTIFICATIONS)
     }
   }
 
@@ -148,21 +148,22 @@ fun MainContent() {
         verticalArrangement = Arrangement.Center
       ) {
         when (notificationState) {
-          true -> Text("已開啟通知")
+          true -> Text("已允許通知")
 
+          // SDK < TIRAMISU will not go to this branch
           false -> Button(onClick = {
-            launcher.launch(POST_NOTIFICATIONS)
-            NotificationManagerCompat.from(context).areNotificationsEnabled()
+            notificationPermissionRequester.launch(POST_NOTIFICATIONS)
           }) {
-            Text("開啟通知")
+            Text("允許通知")
           }
 
           null -> Button(onClick = {
-            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-            intent.putExtra(Settings.EXTRA_APP_PACKAGE, "com.rayliu0712.saveit")
-            context.startActivity(intent)
+            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+              putExtra(Settings.EXTRA_APP_PACKAGE, "com.rayliu0712.saveit")
+            }
+            intentLauncher.launch(intent)
           }) {
-            Text("手動開啟通知")
+            Text("手動允許通知")
           }
         }
 
@@ -173,28 +174,26 @@ fun MainContent() {
           context.startActivity(intent)
         }) {
           Icon(
-            Icons.Filled.Download,
+            Icons.Filled.FolderOpen,
             contentDescription = null,
             modifier = Modifier.size(ButtonDefaults.IconSize),
           )
           Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-          Text("Open Download Folder")
+          Text("打開下載資料夾")
         }
       }
     }
   }
 }
 
+fun Context.checkNotificationPermission(): Boolean? {
+  val isGranted = NotificationManagerCompat.from(this)
+    .areNotificationsEnabled()
 
-fun Context.getActivity(): Activity {
-  var context = this
-
-  while (context is ContextWrapper) {
-    if (context is Activity) {
-      return context
-    }
-    context = context.baseContext
-  }
-
-  error("Cannot get activity from context")
+  return if (SDK_INT >= TIRAMISU)
+    isGranted
+  else if (isGranted)
+    true
+  else
+    null
 }
