@@ -6,9 +6,8 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.isActive
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -30,61 +29,46 @@ fun Context.getFilenameAndSize(uri: Uri): Pair<String, Long> {
     }
 }
 
-fun Context.saveToDownload(
-  inputUri: Uri,
+fun Context.insertToDownload(
   filename: String,
   mime: String?,
-  fileSize: Long,
-): Flow<Long> {
-  val iStream = contentResolver.openInputStream(inputUri)!!
-
+): Uri {
   val values = ContentValues().apply {
     put(MediaStore.Downloads.DISPLAY_NAME, filename)
     put(MediaStore.Downloads.MIME_TYPE, mime)
     put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-    put(MediaStore.Downloads.IS_PENDING, true)
+    // put(MediaStore.Downloads.IS_PENDING, true)
+    // TODO
   }
-  val oUri = contentResolver.insert(
+
+  return contentResolver.insert(
     MediaStore.Downloads.EXTERNAL_CONTENT_URI,
     values
   )!!
-  val oStream = contentResolver.openOutputStream(oUri)!!
-
-  return copyStream(iStream, oStream, fileSize)
-    .onCompletion {
-      val newValues = ContentValues().apply {
-        put(MediaStore.Downloads.IS_PENDING, false)
-      }
-      contentResolver.update(oUri, newValues, null, null)
-    }
 }
 
-private fun copyStream(
-  iStream: InputStream,
-  oStream: OutputStream,
-  fileSize: Long
-) = flow {
-  val buffer = ByteArray(1_048_576)  // 1 MB
-  var total = 0L
-  var lastPercent = 0L
-
-  while (true) {
-    val len = iStream.read(buffer)
-    if (len == -1)
-      break
-
-    oStream.write(buffer, 0, len)
-    total += len
-
-    val currentPercent = (total * 100) / fileSize
-    if (currentPercent > lastPercent) {
-      emit(total)
-      lastPercent = currentPercent
-    }
+fun Context.markAsDone(uri: Uri) {
+  val values = ContentValues().apply {
+    put(MediaStore.Downloads.IS_PENDING, false)
   }
 
-  iStream.close()
-  oStream.close()
+  contentResolver.update(uri, values, null, null)
+}
+
+fun CoroutineScope.copyStream(
+  iStream: InputStream,
+  oStream: OutputStream,
+) {
+  val buffer = ByteArray(1_048_576)  // 1 MB
+
+  while (isActive) {
+    val len = iStream.read(buffer)
+    if (len == -1) {
+      break
+    }
+
+    oStream.write(buffer, 0, len)
+  }
 }
 
 fun Long.toFileSizeFormat(): String {
@@ -94,11 +78,11 @@ fun Long.toFileSizeFormat(): String {
   val oneTiB = 1_099_511_627_776.0
 
   return if (this < oneMiB)
-    "%.1f KiB".format(this / oneKiB)
+    "%.1f KB".format(this / oneKiB)
   else if (this < oneGiB)
-    "%.1f MiB".format(this / oneMiB)
+    "%.1f MB".format(this / oneMiB)
   else if (this < oneTiB)
-    "%.1f GiB".format(this / oneGiB)
+    "%.1f GB".format(this / oneGiB)
   else // size >= 1TiB
-    "%.1f TiB".format(this / oneTiB)
+    "%.1f TB".format(this / oneTiB)
 }

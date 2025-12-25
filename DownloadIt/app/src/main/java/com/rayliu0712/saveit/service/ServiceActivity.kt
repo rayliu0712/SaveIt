@@ -9,23 +9,18 @@ class ServiceActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
-    when (intent.action) {
-      Intent.ACTION_VIEW -> {
-        val uri = intent.data!!
-        startServiceAndFinish(uri)
-      }
-
-      Intent.ACTION_SEND -> {
-        val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-        startServiceAndFinish(uri!!)
-      }
+    val uri = when (intent.action) {
+      Intent.ACTION_VIEW -> intent.data!!
+      Intent.ACTION_SEND -> intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)!!
+      else -> error("Other actions")
     }
-  }
+    val mime = intent.type
 
-  private fun startServiceAndFinish(uri: Uri) {
-    val i = Intent(this, FileCopyService::class.java)
-    i.setDataAndType(uri, intent.type)
-    startForegroundService(i)
+    val serviceIntent = Intent(this, FileCopyService::class.java).apply {
+      setDataAndType(uri, mime)
+      flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    }
+    startForegroundService(serviceIntent)
     finish()
   }
 }
