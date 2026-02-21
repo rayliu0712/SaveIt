@@ -1,38 +1,29 @@
 package com.rayliu0712.saveit.service
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.NotificationManager.IMPORTANCE_LOW
-import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.Uri
-import android.os.Build.VERSION.SDK_INT
-import android.os.Build.VERSION_CODES.S
+import androidx.core.content.IntentCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
-import com.rayliu0712.saveit.R
-import com.rayliu0712.saveit.fuck
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.plus
+import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /// Service is singleton
 class FileCopyService : LifecycleService() {
-  private lateinit var notificationMan: NotificationManager
+  private val parentJob = SupervisorJob()
+  private val parentScope = lifecycleScope + parentJob
   private val counter = AtomicInteger(0)
-  private val jobMap = mutableMapOf<Int, Job>()
-
-  companion object {
-    private const val PROGRESS_CHANNEL_ID = "PROGRESS_CHANNEL"
-    private const val ACTION_CANCEL_JOB = "ACTION_CANCEL_JOB"
-    private const val EXTRA_NAME = "NOTIFY_ID"
-  }
+  private val jobMap = ConcurrentHashMap<Int, Job>()
 
   override fun onStartCommand(
     intent: Intent?,
@@ -41,147 +32,80 @@ class FileCopyService : LifecycleService() {
   ): Int {
     super.onStartCommand(intent, flags, startId)
 
-    notificationMan = getSystemService(NotificationManager::class.java)
-    createChannel()
+    if (intent!!.action == ACTION_CANCEL_ALL_JOBS) {
+      parentJob.cancelChildren()
 
-    fuck("intent action", intent?.action)
-    if (intent!!.action == ACTION_CANCEL_JOB) {
-      fuck("enter ACTION_CANCEL_JOB")
-      val notifyId = intent.getIntExtra(EXTRA_NAME, -1)
-      jobMap[notifyId]?.cancel()
-      return START_NOT_STICKY
-    }
+    } else if (intent.action == ACTION_CANCEL_JOB) {
+      val progressId = intent.getIntExtra(PROGRESS_ID_NAME, -1)
+      jobMap[progressId]?.cancel()
 
-    lifecycleScope.launch {
-      val context = this@FileCopyService
+    } else {
+      val uriList =
+        IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)!!
 
-      // TODO: for multiple data (action send multiple)
+      val uriCount = uriList.size
+      val lastCount = counter.getAndAdd(uriCount)
 
-      val notifyId = counter.incrementAndGet() + 1
+      if (lastCount == 0) {
+        initNotificationMan()
 
-      val notification = Notification.Builder(context, PROGRESS_CHANNEL_ID)
-        .apply {
-          setSmallIcon(R.drawable.file_copy)
-          if (SDK_INT >= S) {
-            setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        startForeground(
+          1,  // id = 1
+          createCountNotification(uriCount),
+          ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+      } else {
+        notifyCount(lastCount + uriCount)
+      }
+
+      for ((i, uri) in uriList.withIndex()) {
+        // progressId: 2, 4, 6, 8, ...
+        val progressId = (lastCount + i + 1) * 2
+
+        jobMap[progressId] = parentScope.launch(Dispatchers.Main) {
+          try {
+            withContext(Dispatchers.IO) {
+              startWork(progressId, uri)
+            }
+          } finally {
+            jobMap.remove(progressId)
+            val count = counter.decrementAndGet()
+            notifyCount(count)
+            if (count == 0) {
+              stopForeground(STOP_FOREGROUND_REMOVE)
+              stopSelf()
+            }
           }
         }
-        .build()
-
-      startForeground(
-        notifyId,
-        notification,
-        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-      )
-
-      jobMap[notifyId] = launch(Dispatchers.IO) {
-        startWork(notifyId, intent.data!!, intent.type!!)
       }
     }
 
     return START_NOT_STICKY
   }
 
-  private fun CoroutineScope.startWork(
-    notifyId: Int,
-    iUri: Uri,
-    mime: String,
-  ) {
-    var oUri: Uri? = null
+  private fun CoroutineScope.startWork(progressId: Int, iUri: Uri) {
+    val (filename, fileSize) = contentResolver.getFilenameAndSize(iUri)
+    notifyProgress(progressId, filename, 0, fileSize)
+
+    val mime = contentResolver.getType(iUri)
+    val oUri = contentResolver.insertToDownload(filename, mime)
 
     try {
-      val (filename, fileSize) = getFilenameAndSize(iUri)
-      notifyBeginning(notifyId, filename, fileSize)
-      ensureActive()
-
-      oUri = insertToDownload(filename, mime)
-      ensureActive()
-
-      val iStream = contentResolver.openInputStream(iUri)!!
-      val oStream = contentResolver.openOutputStream(oUri)!!
-      copyStream(iStream, oStream)
-      iStream.close()
-      oStream.close()
-      ensureActive()
-
-      markAsDone(oUri)
-      notifyCompletion(notifyId, filename)
-      //
-    } catch (_: CancellationException) {
-      //
-      notificationMan.cancel(notifyId)
-      if (oUri != null) {
-        contentResolver.delete(oUri, null, null)
+      contentResolver.openInputStream(iUri)!!.use { iStream ->
+        contentResolver.openOutputStream(oUri)!!.use { oStream ->
+          copyStream(iStream, oStream) { copiedLen ->
+            notifyProgress(progressId, filename, copiedLen, fileSize)
+          }
+        }
       }
-    } finally {
-      jobMap.remove(notifyId)
-      if (counter.decrementAndGet() == 0) {
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
-      }
+
+      cancelProgressNotification(progressId)
+      contentResolver.markAsDone(oUri)
+      notifyCompletion(completionId = progressId + 1, filename)
+    } catch (e: CancellationException) {
+      cancelProgressNotification(progressId)
+      contentResolver.delete(oUri, null, null)
+      throw e
     }
-  }
-
-  private fun createChannel() {
-    val channel = NotificationChannel(
-      PROGRESS_CHANNEL_ID,
-      "進度",
-      IMPORTANCE_LOW
-    )
-
-    notificationMan.createNotificationChannel(channel)
-  }
-
-  private fun notifyBeginning(
-    notifyId: Int,
-    filename: String,
-    fileSize: Long
-  ) {
-    fuck("notifyId", notifyId)
-
-    val cancelIntent = Intent(this, FileCopyService::class.java).apply {
-      action = ACTION_CANCEL_JOB
-      putExtra(EXTRA_NAME, notifyId)
-    }
-    val pendingIntent = PendingIntent.getService(
-      this,
-      notifyId,
-      cancelIntent,
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
-    val action = Notification.Action.Builder(
-      null, "取消", pendingIntent
-    ).build()
-
-    val notification = Notification.Builder(this, PROGRESS_CHANNEL_ID).apply {
-      setSmallIcon(R.drawable.file_copy)
-      setContentTitle(filename)
-      setContentText(fileSize.toFileSizeFormat())
-      setProgress(0, 0, true)
-      setActions(action)
-//      setOngoing(true)
-//      setAutoCancel(true)
-
-      if (SDK_INT >= S) {
-        setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
-      }
-    }.build()
-
-    notificationMan.notify(notifyId, notification)
-  }
-
-  private fun notifyCompletion(notifyId: Int, filename: String) {
-    val notification = Notification.Builder(this, PROGRESS_CHANNEL_ID).apply {
-      setSmallIcon(R.drawable.file_copy)
-      setContentTitle("$filename 完成")
-//      setOngoing(true)
-//      setAutoCancel(true)
-
-      if (SDK_INT >= S) {
-        setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
-      }
-    }.build()
-
-    notificationMan.notify(notifyId, notification)
   }
 }

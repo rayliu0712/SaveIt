@@ -32,19 +32,16 @@
             android:exported="true"
             android:theme="@style/ServiceActivity">
 
-            <!-- open as ... -->
             <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
 
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
 
                 <data android:mimeType="*/*" />
             </intent-filter>
 
-            <!-- share single file to ... -->
             <intent-filter>
-                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
 
                 <category android:name="android.intent.category.DEFAULT" />
 
