@@ -18,8 +18,8 @@ configure<ApplicationExtension> {
         applicationId = "com.rayliu0712.saveit"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "2.0.0-alpha"
+        versionCode = 3
+        versionName = "2.0.0-rc01"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
