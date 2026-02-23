@@ -35,7 +35,7 @@ class FileCopyService : LifecycleService() {
       parentJob.cancelChildren()
 
     } else if (intent.action == ACTION_CANCEL_JOB) {
-      val progressId = intent.getIntExtra(PROGRESS_ID_NAME, -1)
+      val progressId = intent.getIntExtra(ID_NAME, -1)
       jobMap[progressId]?.cancel()
 
     } else {

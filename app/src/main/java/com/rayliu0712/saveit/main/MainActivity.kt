@@ -15,7 +15,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,16 +22,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -47,10 +41,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.net.toUri
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +66,6 @@ fun MainContent() {
   val context = LocalContext.current
   val activity = LocalActivity.current!!
 
-  var expanded by remember { mutableStateOf(false) }
   var notificationState by remember {
     mutableStateOf(context.checkNotificationPermission())
   }
@@ -91,7 +86,7 @@ fun MainContent() {
 
   val intentLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.StartActivityForResult()
-  ) { result ->
+  ) {
     notificationState = context.checkNotificationPermission()
   }
 
@@ -106,34 +101,6 @@ fun MainContent() {
       topBar = {
         TopAppBar(
           title = { Text("Save It") },
-          actions = {
-            Box {
-              IconButton(onClick = { expanded = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = null)
-              }
-              DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                containerColor = MaterialTheme.colorScheme.surface
-              ) {
-                DropdownMenuItem(
-                  text = { Text("GitHub") },
-                  onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                      data = "https://github.com/rayliu0712/SaveIt".toUri()
-                    }
-                    context.startActivity(intent)
-                  },
-                  leadingIcon = {
-                    Icon(
-                      Icons.Default.Coffee,
-                      contentDescription = null
-                    )
-                  },
-                )
-              }
-            }
-          },
           colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
           )
@@ -148,22 +115,23 @@ fun MainContent() {
         verticalArrangement = Arrangement.Center
       ) {
         when (notificationState) {
-          true -> Text("已允許通知")
+          true -> Text("Notifications Allowed")
 
           // SDK < TIRAMISU will not go to this branch
           false -> Button(onClick = {
             notificationPermissionRequester.launch(POST_NOTIFICATIONS)
           }) {
-            Text("允許通知")
+            Text("Allow Notifications")
           }
 
           null -> Button(onClick = {
-            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-              putExtra(Settings.EXTRA_APP_PACKAGE, "com.rayliu0712.saveit")
-            }
+            val intent =
+              Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, `package`)
+              }
             intentLauncher.launch(intent)
           }) {
-            Text("手動允許通知")
+            Text("Allow Notifications Manually")
           }
         }
 
@@ -179,8 +147,18 @@ fun MainContent() {
             modifier = Modifier.size(ButtonDefaults.IconSize),
           )
           Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-          Text("打開下載資料夾")
+          Text("Open Download Folder")
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+          text = buildAnnotatedString {
+            withLink(LinkAnnotation.Url(url = "https://github.com/rayliu0712/SaveIt")) {
+              append("GitHub")
+            }
+          }
+        )
       }
     }
   }

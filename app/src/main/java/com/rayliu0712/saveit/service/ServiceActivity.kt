@@ -28,14 +28,6 @@ class ServiceActivity : ComponentActivity() {
 
       else -> error("Other actions")
     }
-//
-//    for (uri in uriList) {
-//      grantUriPermission(
-//        packageName,
-//        uri,
-//        Intent.FLAG_GRANT_READ_URI_PERMISSION
-//      )
-//    }
 
     val serviceIntent = Intent(this, FileCopyService::class.java).apply {
       val myClipData = ClipData.newRawUri("files", uriList[0])

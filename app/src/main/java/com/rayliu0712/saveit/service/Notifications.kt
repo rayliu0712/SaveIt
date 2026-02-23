@@ -16,7 +16,7 @@ const val COMPLETION_CHANNEL_ID = "com.rayliu0712.saveit.COMPLETION_CHANNEL"
 const val ACTION_CANCEL_ALL_JOBS =
   "com.rayliu0712.saveit.ACTION_CANCEL_ALL_JOBS"
 const val ACTION_CANCEL_JOB = "com.rayliu0712.saveit.ACTION_CANCEL_JOB"
-const val PROGRESS_ID_NAME = "com.rayliu0712.saveit.PROGRESS_ID"
+const val ID_NAME = "com.rayliu0712.saveit.ID"
 
 private lateinit var notificationMan: NotificationManager
 
@@ -53,10 +53,11 @@ fun Context.createCountNotification(remaining: Int): Notification {
     null, "Cancel All", pendingIntent
   ).build()
 
+  val fileText = if (remaining == 1) "File" else "Files"
   return Notification.Builder(this, PROGRESS_CHANNEL_ID)
     .apply {
       setSmallIcon(R.drawable.file_copy)
-      setContentTitle("remains $remaining files")
+      setContentTitle("$remaining $fileText Remaining")
       setActions(action)
 
       if (SDK_INT >= S) {
@@ -72,18 +73,18 @@ fun Context.notifyCount(remaining: Int) {
 }
 
 fun Context.notifyProgress(
-  progressId: Int,
+  id: Int,
   filename: String,
   copiedLen: Long,
   fileSize: Long,
 ) {
   val cancelIntent = Intent(this, FileCopyService::class.java).apply {
     action = ACTION_CANCEL_JOB
-    putExtra(PROGRESS_ID_NAME, progressId)
+    putExtra(ID_NAME, id)
   }
   val pendingIntent = PendingIntent.getService(
     this,
-    progressId,
+    id,
     cancelIntent,
     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
   )
@@ -105,11 +106,11 @@ fun Context.notifyProgress(
     }
   }.build()
 
-  notificationMan.notify(progressId, notification)
+  notificationMan.notify(id, notification)
 }
 
-fun cancelProgressNotification(progressId: Int) {
-  notificationMan.cancel(progressId)
+fun cancelProgressNotification(id: Int) {
+  notificationMan.cancel(id)
 }
 
 fun Context.notifyCompletion(filename: String) {
