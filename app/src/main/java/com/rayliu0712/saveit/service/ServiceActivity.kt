@@ -1,5 +1,6 @@
 package com.rayliu0712.saveit.service
 
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -27,10 +28,24 @@ class ServiceActivity : ComponentActivity() {
 
       else -> error("Other actions")
     }
+//
+//    for (uri in uriList) {
+//      grantUriPermission(
+//        packageName,
+//        uri,
+//        Intent.FLAG_GRANT_READ_URI_PERMISSION
+//      )
+//    }
 
     val serviceIntent = Intent(this, FileCopyService::class.java).apply {
-      putParcelableArrayListExtra(Intent.EXTRA_STREAM, uriList)
-//      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      val myClipData = ClipData.newRawUri("files", uriList[0])
+      for (i in 1 until uriList.size) {
+        val item = ClipData.Item(uriList[i])
+        myClipData.addItem(item)
+      }
+
+      clipData = myClipData
+      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     startForegroundService(serviceIntent)
     finish()

@@ -13,7 +13,8 @@ import com.rayliu0712.saveit.R
 
 const val PROGRESS_CHANNEL_ID = "com.rayliu0712.saveit.PROGRESS_CHANNEL"
 const val COMPLETION_CHANNEL_ID = "com.rayliu0712.saveit.COMPLETION_CHANNEL"
-const val ACTION_CANCEL_ALL_JOBS = "com.rayliu0712.saveit.ACTION_CANCEL_ALL_JOBS"
+const val ACTION_CANCEL_ALL_JOBS =
+  "com.rayliu0712.saveit.ACTION_CANCEL_ALL_JOBS"
 const val ACTION_CANCEL_JOB = "com.rayliu0712.saveit.ACTION_CANCEL_JOB"
 const val PROGRESS_ID_NAME = "com.rayliu0712.saveit.PROGRESS_ID"
 
@@ -111,15 +112,16 @@ fun cancelProgressNotification(progressId: Int) {
   notificationMan.cancel(progressId)
 }
 
-fun Context.notifyCompletion(completionId: Int, filename: String) {
+fun Context.notifyCompletion(filename: String) {
   val notification = Notification.Builder(this, COMPLETION_CHANNEL_ID).apply {
     setSmallIcon(R.drawable.file_copy)
-    setContentTitle("$filename 完成")
+    setContentTitle("$filename Completed")
 
     if (SDK_INT >= S) {
       setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
     }
   }.build()
 
-  notificationMan.notify(completionId, notification)
+  val id = System.currentTimeMillis().hashCode()
+  notificationMan.notify(id, notification)
 }

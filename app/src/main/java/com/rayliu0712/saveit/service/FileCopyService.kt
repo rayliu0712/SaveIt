@@ -3,7 +3,6 @@ package com.rayliu0712.saveit.service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.Uri
-import androidx.core.content.IntentCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
@@ -40,12 +39,10 @@ class FileCopyService : LifecycleService() {
       jobMap[progressId]?.cancel()
 
     } else {
-      val uriList =
-        IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)!!
+      val clipData = intent.clipData!!
+      val uriCount = clipData.itemCount
 
-      val uriCount = uriList.size
       val lastCount = counter.getAndAdd(uriCount)
-
       if (lastCount == 0) {
         initNotificationMan()
 
@@ -58,7 +55,9 @@ class FileCopyService : LifecycleService() {
         notifyCount(lastCount + uriCount)
       }
 
-      for ((i, uri) in uriList.withIndex()) {
+      for (i in 0 until uriCount) {
+        val uri = clipData.getItemAt(i).uri
+
         // progressId: 2, 4, 6, 8, ...
         val progressId = (lastCount + i + 1) * 2
 
@@ -101,7 +100,7 @@ class FileCopyService : LifecycleService() {
 
       cancelProgressNotification(progressId)
       contentResolver.markAsDone(oUri)
-      notifyCompletion(completionId = progressId + 1, filename)
+      notifyCompletion(filename)
     } catch (e: CancellationException) {
       cancelProgressNotification(progressId)
       contentResolver.delete(oUri, null, null)
