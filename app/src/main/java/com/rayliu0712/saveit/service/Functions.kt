@@ -7,7 +7,10 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -37,7 +40,6 @@ fun ContentResolver.insertToDownload(
     put(MediaStore.Downloads.DISPLAY_NAME, filename)
     put(MediaStore.Downloads.MIME_TYPE, mime)
     put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-    // todo: put(MediaStore.Downloads.IS_PENDING, true)
   }
 
   return insert(
@@ -56,9 +58,8 @@ fun ContentResolver.markAsDone(uri: Uri) {
 
 fun CoroutineScope.copyStream(
   iStream: InputStream,
-  oStream: OutputStream,
-  onProgress: (Long) -> Unit
-) {
+  oStream: OutputStream
+) = flow {
   val buffer = ByteArray(1_048_576)  // 1 MB
   var copiedLen = 0L
   var lastTime = System.currentTimeMillis()
@@ -74,14 +75,13 @@ fun CoroutineScope.copyStream(
     copiedLen += len
     val currentTime = System.currentTimeMillis()
     if (currentTime - lastTime >= 1000) {
-      onProgress(copiedLen)
-      lastTime = System.currentTimeMillis()
+      emit(copiedLen)
+      lastTime = currentTime
     }
   }
 
-  onProgress(copiedLen)
-}
-
+  emit(copiedLen)
+}.flowOn(Dispatchers.IO)
 
 fun Long.toFileSizeFormat(): String {
   val oneKiB = 1_024.0

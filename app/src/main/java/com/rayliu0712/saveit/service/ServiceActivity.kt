@@ -8,7 +8,9 @@ import androidx.activity.ComponentActivity
 import androidx.core.content.IntentCompat
 
 class ServiceActivity : ComponentActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
+  override fun onCreate(
+    savedInstanceState: Bundle?
+  ) {
     super.onCreate(savedInstanceState)
 
     val uriList = when (intent.action) {

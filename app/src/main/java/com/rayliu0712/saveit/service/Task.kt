@@ -1,0 +1,22 @@
+package com.rayliu0712.saveit.service
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+
+abstract class Task {
+  var filename by mutableStateOf<String?>(null)
+  var fileSize by mutableLongStateOf(0L)
+  var copiedLen by mutableLongStateOf(0L)
+
+  abstract fun cancel()
+}
+
+val taskCount = AtomicInteger(0)
+
+val taskMap = ConcurrentHashMap<Int, Task>()
+
+var cancelAllTasks: (() -> Unit)? = null
