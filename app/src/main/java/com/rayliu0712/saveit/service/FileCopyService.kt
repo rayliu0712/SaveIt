@@ -103,7 +103,7 @@ class FileCopyService : LifecycleService() {
         withContext(Dispatchers.IO) {
           val mime = contentResolver.getType(iUri)
           val oUri = contentResolver.insertToDownload(filename, mime)
-          saveUriToDownload(id, task, iUri, oUri, filename, fileSize)
+          saveUriToDownload(id, task, iUri, oUri, filename, mime, fileSize)
         }
       } finally {
         // [-] remove from futureMap
@@ -125,6 +125,7 @@ class FileCopyService : LifecycleService() {
     iUri: Uri,
     oUri: Uri,
     filename: String,
+    mime: String?,
     fileSize: Long
   ) {
     try {
@@ -142,7 +143,7 @@ class FileCopyService : LifecycleService() {
 
       cancelProgressNotification(id)
       contentResolver.markAsDone(oUri)
-      notifyCompletion(filename)
+      notifyCompletion(oUri, filename, mime)
 
     } catch (e: CancellationException) {
       cancelProgressNotification(id)
