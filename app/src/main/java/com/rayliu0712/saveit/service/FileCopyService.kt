@@ -84,7 +84,7 @@ class FileCopyService : LifecycleService() {
     var job: Job? = null
 
     // [+] add to futureMap
-    val task = object : Task() {
+    val task = object : Task(id) {
       override fun cancel() {
         job?.cancel()
       }
@@ -101,9 +101,9 @@ class FileCopyService : LifecycleService() {
         notifyProgress(id, filename, 0, fileSize)
 
         withContext(Dispatchers.IO) {
-          val mime = contentResolver.getType(iUri)
-          val oUri = contentResolver.insertToDownload(filename, mime)
-          saveUriToDownload(id, task, iUri, oUri, filename, mime, fileSize)
+          task.mime = contentResolver.getType(iUri)
+          task.oUri = contentResolver.insertToDownload(filename, task.mime)
+          saveUriToDownload(iUri, task)
         }
       } finally {
         // [-] remove from futureMap
@@ -120,19 +120,20 @@ class FileCopyService : LifecycleService() {
   }
 
   private suspend fun CoroutineScope.saveUriToDownload(
-    id: Int,
-    task: Task,
     iUri: Uri,
-    oUri: Uri,
-    filename: String,
-    mime: String?,
-    fileSize: Long
+    task: Task
   ) {
+    val oUri = task.oUri!!
+    val id = task.id
+    val filename = task.filename!!
+    val fileSize = task.fileSize
+
     try {
       contentResolver.openInputStream(iUri)!!.use { iStream ->
         contentResolver.openOutputStream(oUri)!!.use { oStream ->
           copyStream(iStream, oStream)
             .collect { copiedLen ->
+              // 在 Main Dispatcher 更新，保證 Compose 能監測到
               withContext(Dispatchers.Main) {
                 task.copiedLen = copiedLen
               }
@@ -143,7 +144,7 @@ class FileCopyService : LifecycleService() {
 
       cancelProgressNotification(id)
       contentResolver.markAsDone(oUri)
-      notifyCompletion(oUri, filename, mime)
+      notifyCompletion(oUri, filename, task.mime)
 
     } catch (e: CancellationException) {
       cancelProgressNotification(id)
