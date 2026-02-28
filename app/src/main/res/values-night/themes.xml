@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- 基礎主題 (淺色) -->
-    <style name="Theme.SaveIt" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- 基礎主題 (深色) -->
+    <style name="Theme.SaveIt" parent="android:Theme.Material.NoActionBar" />
 
     <!-- 透明背景子主題 -->
     <style name="Theme.SaveIt.Translucent" parent="Theme.SaveIt">
