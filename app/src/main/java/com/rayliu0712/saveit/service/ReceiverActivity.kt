@@ -7,7 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.core.content.IntentCompat
 
-class ServiceActivity : ComponentActivity() {
+class ReceiverActivity : ComponentActivity() {
   override fun onCreate(
     savedInstanceState: Bundle?
   ) {

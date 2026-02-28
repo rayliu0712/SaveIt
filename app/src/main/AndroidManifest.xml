@@ -12,13 +12,16 @@
         android:icon="@mipmap/ic_launcher"
         android:label="Save It"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SaveIt">
 
         <activity
-            android:name=".main.MainActivity"
-            android:exported="true"
-            android:theme="@style/MainActivity">
+            android:name=".compose.ProgressActivity"
+            android:exported="false" />
 
+        <activity
+            android:name=".compose.MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -26,12 +29,10 @@
             </intent-filter>
         </activity>
 
-        <!-- activity that use to launch service -->
         <activity
-            android:name=".service.ServiceActivity"
+            android:name=".service.ReceiverActivity"
             android:exported="true"
-            android:theme="@style/ServiceActivity">
-
+            android:theme="@style/Theme.SaveIt.Translucent">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
 
@@ -39,7 +40,6 @@
 
                 <data android:mimeType="*/*" />
             </intent-filter>
-
             <intent-filter>
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
 
@@ -53,6 +53,6 @@
             android:name=".service.FileCopyService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
-
     </application>
+
 </manifest>

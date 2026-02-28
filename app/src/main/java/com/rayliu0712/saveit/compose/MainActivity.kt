@@ -1,4 +1,4 @@
-package com.rayliu0712.saveit.main
+package com.rayliu0712.saveit.compose
 
 import android.Manifest.permission.POST_NOTIFICATIONS
 import android.app.DownloadManager

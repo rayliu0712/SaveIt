@@ -1,4 +1,4 @@
-package com.rayliu0712.saveit.main
+package com.rayliu0712.saveit.compose
 
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.S
